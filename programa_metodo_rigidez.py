@@ -6,10 +6,16 @@ Created on Fri Oct  4 10:23:28 2019
 """
 import numpy as np
 
-class no:
-    def __init__(self,x,y):
+class No:
+    def __init__(self,x,y,z):
         self.x=x
         self.y=y
+        self.z=z
+        self.deslocamentos()
+    def deslocamentos(self):
+        self.desX=input("deslocamento em x ")
+        self.desY=input("deslocamento em y ")
+        self.desZ=input("deslocamento em z ")
     def getX():
         return x
     def getY():
@@ -18,9 +24,13 @@ class no:
         self.x=x
     def setY():
         self.y=y
+    def setZ():
+        self.z=z
+    def getZ():
+        return self.z
     
 
-class matrix: # tad matrix para gerar e guardar a matriz do problema.
+class Matrix: # tad matrix para gerar e guardar a matriz do problema.
     
     def __init__(self,i,j):
         self.matriz = np.zeros((i,j), dtype=np.float64) #inicializa matriz com zero
@@ -31,7 +41,7 @@ class matrix: # tad matrix para gerar e guardar a matriz do problema.
     def getIndice(self,i,j):
         return self.matriz[i][j]
         
-class barrra:
+class Barrra:
     def __init__(self,n1,n2,L,EA):
         self.n1 = n1
         self.n2 = n2
@@ -40,10 +50,12 @@ class barrra:
         self.cx = (n2[0]-n1[0])/L
         self.cy = (n2[1]-n1[1])/L
         self.cz = (n2[2]-n1[2])/L
-        self.matriz[0][0]=self.cos**2*EA/L
-        self.matriz[1][1]=self.sen**2*EA/L
-        
-    def setEA(x):
+        self.matriz[0][0] = self.cos**2*EA/L
+        self.matriz[1][1] = self.sen**2*EA/L
+        self.matriz[1][0]= matriz[0][1] = cos*sen*EA/L
+        for i in range(6):
+            self.matriz
+        def setEA(x):
         self.EA=x    
         
     
@@ -52,6 +64,5 @@ x=int(input("Quantidade de nos"))
 
 noL=[]
 for i in range(x): # [x,y,z (coordenadas x,y,z)]
-   no=[input("Desloca em x? "),input("desloca em y? "),input("desloca em z? "),(input("coordenada x "),input("coordenada y "),input("coordenada z "))]    
+   no= No(int(input("coordenada x ")),int(input("coordenada y ")),int(input("coordenada z ")))    
    noL.append(no)
-       

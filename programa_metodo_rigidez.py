@@ -13,9 +13,9 @@ class No:
         self.z=z
         self.deslocamentos()
     def deslocamentos(self):
-        self.desX=input("deslocamento em x ")
-        self.desY=input("deslocamento em y ")
-        self.desZ=input("deslocamento em z ")
+        self.desX=int(input("deslocamento em x "))
+        self.desY=int(input("deslocamento em y "))
+        self.desZ=int(input("deslocamento em z "))
     def getX():
         return x
     def getY():
@@ -42,21 +42,34 @@ class Matrix: # tad matrix para gerar e guardar a matriz do problema.
         return self.matriz[i][j]
         
 class Barrra:
-    def __init__(self,n1,n2,L,EA):
+    def __init__(self,n1,n2):
         self.n1 = n1
         self.n2 = n2
-        self.EA = EA
-        self.L = ((n1[0]-n2[0])**2+(n1[1]-n2[1])**2)**0.5
+                
+    def criarCs():
         self.cx = (n2[0]-n1[0])/L
         self.cy = (n2[1]-n1[1])/L
         self.cz = (n2[2]-n1[2])/L
-        self.matriz[0][0] = self.cos**2*EA/L
-        self.matriz[1][1] = self.sen**2*EA/L
-        self.matriz[1][0]= matriz[0][1] = cos*sen*EA/L
-        for i in range(6):
-            self.matriz
-        def setEA(x):
-        self.EA=x    
+    def getL():
+        self.L = ((n1[0]-n2[0])**2+(n1[1]-n2[1])**2)**0.5
+    def matrizRigidezTrelica():
+        self.matriz[0][0] = self.cx**2*self.EA/self.L
+        self.matriz[0][1] = self.cy*self.cx*self.EA/self.L
+        self.matriz[0][2] = self.cz*self.cx*self.EA/self.L
+        self.matriz[0][3] = -self.cx*self.cx*self.EA/self.L
+        self.matriz[0][4] = -self.cy*self.cx*self.EA/self.L
+        self.matriz[0][5] = -self.cz*self.cx*self.EA/self.L
+        
+        self.matriz[1][0] = self.cx*self.cy*self.EA/self.L
+        self.matriz[1][1] = self.cy*self.cy*self.EA/self.L
+        self.matriz[1][2] = self.cz*self.cy*self.EA/self.L
+        self.matriz[1][3] = -self.cx*self.cx*self.EA/self.L
+        self.matriz[1][4] = -self.cy*self.cx*self.EA/self.L
+        self.matriz[1][5] = -self.cz*self.cx*self.EA/self.L
+        
+        
+    def setEA(x):
+        self.EA=x
         
     
 x=int(input("Quantidade de nos"))

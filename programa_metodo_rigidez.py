@@ -242,6 +242,9 @@ class Elemento():
         
 class Estrutura():
     def __init__(self):
+        self.num_equacoes = 0
+        self.matrizK = 0
+        
         self.nos = []
         self.materiais = []
         self.elementos = []
@@ -280,28 +283,30 @@ class Estrutura():
         return None
     
     def criarVetoresLM(self):
-        deslocamentos = []
-        
         d = 1
-        while d <= 2*len(self.nos):
-            deslocamentos.append(d)
-            
-            d+=1
-            
+        
         #deslocamentos desconhecidos
         for i in self.nos:
             if i.getRx() == 0:
-                i.setDx(deslocamentos.pop(0))
-            if i.getRy() == 0:
-                i.setDy(deslocamentos.pop(0))
+                i.setDx(d)
                 
+                self.num_equacoes += 1 #atualiza o número de equações
+                d+=1    
+            if i.getRy() == 0:
+                i.setDy(d)
+                
+                self.num_equacoes += 1 #atualiza o número de equações
+                d+= 1
         #deslocamentos conhecidos
         for i in self.nos:
             if i.getRx() == 1:
-                dx = deslocamentos.pop(0)
-                i.setDx(dx)
+                i.setDx(d)
+                
+                d+=1
             if i.getRy() == 1:
-                i.setDy(deslocamentos.pop(0))
+                i.setDy(d)
+                
+                d+=1
            
         #atualiza o vetor LM
         for i in self.elementos:
@@ -318,6 +323,20 @@ class Estrutura():
             #atualiza a matriz de rigidez no referencial global
             i.setMatrizKG()
             
+    def criarMatrizK(self):
+        #atualiza a matriz K
+        self.matrizK = np.zeros((2*len(self.nos),2*len(self.nos)), dtype = np.float64)
+        
+        #percorre os elementos e armazena os vetores LM e a matriz KG
+        for k in self.elementos:
+            vetorLM = k.getVetorLM()
+            matrizKG = k.getMatrizKG()
+            
+            #percorre os índices do vetor LM correspondentes aos índices da matriz K da estrutura
+            for i in vetorLM:
+                for j in vetorLM:
+                    self.matrizK[i-1][j-1] += matrizKG[vetorLM.index(i)][vetorLM.index(j)]
+                    
 def leitura(nome_arquivo, estrutura):
     num_nos = 0
     num_materiais = 0
@@ -370,5 +389,6 @@ def menu():
     
     estrutura.criarVetoresLM()
     estrutura.criarMatrizesKG()
+    estrutura.criarMatrizK()
     
 menu()

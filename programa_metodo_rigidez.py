@@ -156,7 +156,11 @@ class Elemento():
         self.cx = 0
         self.cy = 0
         self.vetorLM = [] #vetor LM
+        self.matrizRT = np.zeros((4,4), dtype = np.float64) #matriz de rotação
+        self.matrizKL = np.zeros((4,4), dtype = np.float64) #matriz de rigidez no referncial local
         self.matrizKG = np.zeros((4,4), dtype = np.float64) #matriz de rigidez no referncial global
+        self.deslocamentos = [] #vetor deslocamento
+        self.acoesExtremidadeBarras = [] #ações de extremidade das barras
         
     def getId(self):
         return self.id
@@ -182,8 +186,20 @@ class Elemento():
     def getVetorLM(self):
         return self.vetorLM
     
+    def getMatrizRT(self):
+        return self.matrizRT
+    
+    def getMatrizKL(self):
+        return self.matrizKL
+    
     def getMatrizKG(self):
         return self.matrizKG
+    
+    def getDeslocamentos(self):
+        return self.deslocamentos
+    
+    def getAcoesExtremidadeBarras(self):
+        return self.acoesExtremidadeBarras
     
     def setId(self, id):
         self.id = id
@@ -211,6 +227,29 @@ class Elemento():
         self.vetorLM.append(self.n1.getDy())
         self.vetorLM.append(self.n2.getDx())
         self.vetorLM.append(self.n2.getDy())
+        
+    def setMatrizRT(self):
+        cos = self.cx
+        sen = self.cy
+        
+        self.matrizRT[0][0] = cos
+        self.matrizRT[0][1] = sen
+        self.matrizRT[1][0] = -sen
+        self.matrizRT[1][1] = cos
+        
+        self.matrizRT[2][2] = cos
+        self.matrizRT[2][3] = sen
+        self.matrizRT[3][2] = -sen
+        self.matrizRT[3][3] = cos
+        
+    def setMatrizKL(self):
+        EAx_L = ((self.material.getE()*self.material.getA())/self.l)
+        
+        self.matrizKL[0][0] = EAx_L
+        self.matrizKL[0][2] = -EAx_L
+        self.matrizKL[2][0] = -EAx_L
+        self.matrizKL[2][2] = EAx_L
+        
         
     def setMatrizKG(self):
         cos_2 = self.cx**2
@@ -240,14 +279,24 @@ class Elemento():
         
         self.matrizKG = ((self.material.getE()*self.material.getA())/self.l)*self.matrizKG
         
+    def setDeslocamentos(self, deslocamentos):
+        self.deslocamentos = deslocamentos
+        
+    def setAcoesExtremidadeBarras(self, acoesExtremidadeBarras):
+        self.acoesExtremidadeBarras = acoesExtremidadeBarras
+        
 class Estrutura():
     def __init__(self):
         self.num_equacoes = 0
         self.matrizK = 0
+        self.matrizKRD = 0
         
         self.nos = []
         self.materiais = []
         self.elementos = []
+        self.vetorFD = []
+        self.deslocamentos = []
+        self.vetorFR = []
         
     def criarNo(self, id, x, y, z, rx, ry, rz, px, py, pz):
         if self.buscarNo(id) is None:
@@ -337,6 +386,77 @@ class Estrutura():
                 for j in vetorLM:
                     self.matrizK[i-1][j-1] += matrizKG[vetorLM.index(i)][vetorLM.index(j)]
                     
+    def criarVetorFD(self):
+        #cargas nodais em nós com deslocamento desconhecido
+        for i in self.nos:
+            if i.getDx() <= self.num_equacoes:
+                self.vetorFD.append(i.getPx())
+            if i.getDy() <= self.num_equacoes:
+                self.vetorFD.append(i.getPy())
+                
+    def calcularDeslocamentos(self):
+        #inicializa matriz K de tamanho igual ao número de deslocamentos desconhecidos
+        matrizK = np.zeros((self.num_equacoes, self.num_equacoes), dtype = np.float64)
+        
+        for i in range(self.num_equacoes):
+            for j in range(self.num_equacoes):
+                matrizK[i][j] = self.matrizK[i][j]
+                
+        #calcula os deslocamentos desconhecidos
+        self.deslocamentos = np.linalg.solve(matrizK, self.vetorFD)
+        
+        print(self.deslocamentos)
+        
+    def calcularAcoesExtremidadeBarras(self):
+        for i in self.elementos:
+            deslocamentos = []
+            vetorLM = i.getVetorLM()
+            
+            #atualiza o vetor deslocamento
+            l = 0
+            for k in vetorLM:
+                if k > self.num_equacoes:
+                    deslocamentos.append(0)
+                else:
+                    deslocamentos.append(self.deslocamentos[l])
+                    l += 1
+                    
+            i.setDeslocamentos(deslocamentos)
+            #atualiza a matriz de rotação
+            i.setMatrizRT()
+            #atualiza a matriz de rigidez no referencial local
+            i.setMatrizKL()
+            #calcula as ações da extremidade das barras
+            i.setAcoesExtremidadeBarras(np.dot((np.dot(i.getMatrizKL(), i.getMatrizRT())), deslocamentos))
+            
+            print(i.getAcoesExtremidadeBarras())
+            
+    def criarMatrizKRD(self):
+        num_deslocamentos = 2*len(self.nos)
+        num_linhas_KRD = num_deslocamentos-self.num_equacoes
+        num_colunas_KRD = self.num_equacoes
+        
+        coeficientes_matrizKRD = []
+        
+        #inicializa matriz KRD, em que o número de linhas equivale à quantidade de deslocamentos desconhecidos e o número de colunas à quantidade de deslocamentos conhecidos
+        self.matrizKRD = np.zeros((num_linhas_KRD, num_colunas_KRD), dtype = np.float64)
+        
+        for i in range(num_deslocamentos):
+            for j in range(num_deslocamentos):
+                if i >= self.num_equacoes and j < self.num_equacoes:
+                    coeficientes_matrizKRD.append(self.matrizK[i][j])
+        
+        #cria a matriz KRD
+        for i in range(num_linhas_KRD):
+            for j in range(num_colunas_KRD):
+                self.matrizKRD[i][j] = coeficientes_matrizKRD.pop(0)
+
+    def calcularReacoesApoio(self):
+        #calcula as reações de apoio
+        self.vetorFR = np.dot(self.matrizKRD, self.deslocamentos)
+        
+        print(self.vetorFR)
+                
 def leitura(nome_arquivo, estrutura):
     num_nos = 0
     num_materiais = 0
@@ -375,20 +495,41 @@ def leitura(nome_arquivo, estrutura):
     
     return True
     
-def menu():
-    print("**********Mecânica das Estruturas - Método da Rigidez**********")
+#----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+print("**********Mecânica das Estruturas - Método da Rigidez**********")
+
+estrutura = Estrutura()
+
+nome_arquivo = input("Arquivo de entrada: ")
+
+while leitura(nome_arquivo, estrutura) == False:
+    nome_arquivo = input("Arquivo inexistente! Digite novamente: ")
     
-    estrutura = Estrutura()
+print("Estrutura criada com sucesso!")
+
+estrutura.criarVetoresLM()
+estrutura.criarMatrizesKG()
+estrutura.criarMatrizK()
+estrutura.criarVetorFD()
+estrutura.criarMatrizKRD()
+
+opcao = 0
+
+while opcao != "4":
+    print("***************Menu***************")
+    print("1) Calcular deslocamentos")
+    print("2) Calcular ações da extremidade das barras")
+    print("3) Calcular reações de apoio")
+    print("4) Sair")
     
-    nome_arquivo = input("Arquivo de entrada: ")
-    
-    while leitura(nome_arquivo, estrutura) == False:
-        nome_arquivo = input("Arquivo inexistente! Digite novamente: ")
+    opcao = input("O que deseja fazer? ")
+
+    if opcao == "1":
+        estrutura.calcularDeslocamentos()
         
-    print("Estrutura criada com sucesso!")
-    
-    estrutura.criarVetoresLM()
-    estrutura.criarMatrizesKG()
-    estrutura.criarMatrizK()
-    
-menu()
+    if opcao == "2":
+        estrutura.calcularAcoesExtremidadeBarras()
+        
+    if opcao == "3":
+        estrutura.calcularReacoesApoio()
